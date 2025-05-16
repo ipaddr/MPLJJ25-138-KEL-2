@@ -147,14 +147,43 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.green[700],
         unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
+        onTap: (index) {
+          if (index == _selectedIndex) return;
+
+          switch (index) {
+            case 0:
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomePage()),
+              );
+              break;
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AnalysisPage()),
+              );
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SchedulePage()),
+              );
+              break;
+            case 3:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingPage()),
+              );
+              break;
+          }
+        },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-          BottomNavigationBarItem(icon: Icon(Icons.eco), label: 'Lahan'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Notifikasi',
+            icon: Icon(Icons.analytics),
+            label: 'Analisis',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.schedule), label: 'Jadwal'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),

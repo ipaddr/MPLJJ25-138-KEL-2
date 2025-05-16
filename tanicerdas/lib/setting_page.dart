@@ -1,17 +1,62 @@
 import 'package:flutter/material.dart';
+import 'home_page.dart';
+import 'analysis_page.dart';
+import 'schedule_page.dart';
 
-class SettingPage extends StatelessWidget {
+class SettingPage extends StatefulWidget {
   const SettingPage({super.key});
+
+  @override
+  State<SettingPage> createState() => _SettingPageState();
+}
+
+class _SettingPageState extends State<SettingPage> {
+  int _selectedIndex = 3;
+
+  bool _lokasiService = true;
+  bool _cuacaNotif = true;
+  bool _pasarNotif = false;
+
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
+    switch (index) {
+      case 0:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+        break;
+      case 1:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AnalysisPage()),
+        );
+        break;
+      case 2:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SchedulePage()),
+        );
+        break;
+      case 3:
+        // sudah di halaman ini
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('Pengaturan'),
+        backgroundColor: Colors.green,
+        centerTitle: true,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Profile Section
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -20,17 +65,17 @@ class SettingPage extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 30,
                     backgroundImage: AssetImage(
-                      'assets/profile.jpg',
-                    ), // Ganti sesuai kebutuhan
+                      'assets/profile_placeholder.png',
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
+                  const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
                           'Kebun Budi',
                           style: TextStyle(
@@ -46,13 +91,12 @@ class SettingPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(Icons.edit, color: Colors.green),
+                  const Icon(Icons.edit, color: Colors.green),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // Settings Umum
             sectionCard(
               title: 'Settings Umum',
               children: [
@@ -61,24 +105,35 @@ class SettingPage extends StatelessWidget {
                   'Bahasa',
                   trailing: const Text('Indonesia'),
                 ),
-                switchTile(Icons.location_on, 'Lokasi Service', true),
+                switchTile(
+                  icon: Icons.location_on,
+                  title: 'Lokasi Service',
+                  value: _lokasiService,
+                  onChanged: (val) => setState(() => _lokasiService = val),
+                ),
               ],
             ),
-
             const SizedBox(height: 16),
 
-            // Notifikasi
             sectionCard(
               title: 'Notifikasi',
               children: [
-                switchTile(Icons.cloud, 'Pemberitahuan Cuaca', true),
-                switchTile(Icons.storefront, 'Pembaruan Pasar', false),
+                switchTile(
+                  icon: Icons.cloud,
+                  title: 'Pemberitahuan Cuaca',
+                  value: _cuacaNotif,
+                  onChanged: (val) => setState(() => _cuacaNotif = val),
+                ),
+                switchTile(
+                  icon: Icons.storefront,
+                  title: 'Pembaruan Pasar',
+                  value: _pasarNotif,
+                  onChanged: (val) => setState(() => _pasarNotif = val),
+                ),
               ],
             ),
-
             const SizedBox(height: 16),
 
-            // Akun
             sectionCard(
               title: 'Akun',
               children: [
@@ -95,31 +150,25 @@ class SettingPage extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
             const Text('Version 2.1.0', style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 3,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
         selectedItemColor: Colors.green,
         unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
+        selectedIconTheme: const IconThemeData(size: 36),
+        unselectedIconTheme: const IconThemeData(size: 24),
+        showUnselectedLabels: false,
+        showSelectedLabels: true,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analysis',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.schedule),
-            label: 'Schedule',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.schedule), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
@@ -154,12 +203,17 @@ class SettingPage extends StatelessWidget {
     );
   }
 
-  Widget switchTile(IconData icon, String title, bool value) {
+  Widget switchTile({
+    required IconData icon,
+    required String title,
+    required bool value,
+    required Function(bool) onChanged,
+  }) {
     return SwitchListTile(
       secondary: Icon(icon, color: Colors.grey[700]),
       title: Text(title),
       value: value,
-      onChanged: (_) {},
+      onChanged: onChanged,
     );
   }
 }
