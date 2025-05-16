@@ -11,7 +11,7 @@ class SettingPage extends StatefulWidget {
 }
 
 class _SettingPageState extends State<SettingPage> {
-  int _selectedIndex = 3;
+  final int _selectedIndex = 3;
 
   bool _lokasiService = true;
   bool _cuacaNotif = true;
