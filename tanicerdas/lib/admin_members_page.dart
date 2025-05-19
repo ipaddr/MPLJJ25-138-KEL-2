@@ -8,7 +8,7 @@ class AdminMembersPage extends StatefulWidget {
 }
 
 class _AdminMembersPageState extends State<AdminMembersPage> {
-  int _selectedIndex = 3; // Index for Anggota tab
+  final int _selectedIndex = 3; // Index for Anggota tab
   final TextEditingController _searchController = TextEditingController();
 
   final List<Map<String, dynamic>> _members = [
