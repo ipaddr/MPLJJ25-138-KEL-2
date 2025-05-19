@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
-import 'home_page.dart'; // Tambahkan import ini
+import 'home_page.dart';
+import 'admin_login_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -112,7 +113,6 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 8),
 
               // Lupa Password
-              // Lupa Password
               Align(
                 alignment: Alignment.centerRight,
                 child: GestureDetector(
@@ -134,7 +134,33 @@ class LoginScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // Admin Login Button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminLoginScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.admin_panel_settings),
+                  label: const Text("Login sebagai Admin"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.green[700],
+                    side: BorderSide(color: Colors.green[700]!),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // Divider OR
               Row(
