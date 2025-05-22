@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "614623564680",
+    "project_id": "tanicerdas-250cd",
+    "storage_bucket": "tanicerdas-250cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:614623564680:android:2b1e4b17cb0a731552e03d",
+        "android_client_info": {
+          "package_name": "com.example.tanicerdas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2SCB5CbNMHK1Nn_8WhEAOSCJYmt12nis"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
