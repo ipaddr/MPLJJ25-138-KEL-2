@@ -37,7 +37,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       'image': 'https://randomuser.me/api/portraits/women/65.jpg',
     },
     {
-      'name': 'Ahmad Dhani',
+      'name': 'Pia',
       'specialty': 'Hydroponics',
       'distance': '6.7 km away',
       'image': 'https://randomuser.me/api/portraits/men/75.jpg',
