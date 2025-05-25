@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'analysis_page.dart'; // Import halaman analysis
-import 'schedule_page.dart'; // Import halaman schedule
-import 'setting_page.dart'; // Import halaman setting
+import 'analysis_page.dart';
+import 'schedule_page.dart';
+import 'setting_page.dart';
+import 'maplahan.dart';
+import 'tambahtanaman.dart';
+import 'cuaca.dart';
+import 'submitreport.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,7 +23,6 @@ class _HomePageState extends State<HomePage> {
       _selectedIndex = index;
     });
 
-    // Navigasi ke halaman yang sesuai
     switch (index) {
       case 1:
         Navigator.push(
@@ -38,9 +41,6 @@ class _HomePageState extends State<HomePage> {
           context,
           MaterialPageRoute(builder: (context) => const SettingPage()),
         );
-        break;
-      default:
-        // Untuk index 0 (Beranda), tidak perlu navigasi
         break;
     }
   }
@@ -67,7 +67,6 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Section: Total Lahan & Stok Makanan
             Row(
               children: [
                 Expanded(
@@ -89,10 +88,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
-
-            // Akses Cepat
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -104,16 +100,35 @@ class _HomePageState extends State<HomePage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _quickAction(LucideIcons.map, "Map Lahan"),
-                _quickAction(LucideIcons.plusCircle, "Tambah Tanaman"),
-                _quickAction(LucideIcons.cloudSun, "Cuaca"),
-                _quickAction(LucideIcons.fileText, "Report"),
+                _quickAction(LucideIcons.map, "Map Lahan", () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MapLahanPage()),
+                  );
+                }),
+                _quickAction(LucideIcons.plusCircle, "Tambah Tanaman", () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TambahTanamanPage(),
+                    ),
+                  );
+                }),
+                _quickAction(LucideIcons.cloudSun, "Cuaca", () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CuacaPage()),
+                  );
+                }),
+                _quickAction(LucideIcons.fileText, "Report", () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const SubmitReportPage()),
+                  );
+                }),
               ],
             ),
-
             const SizedBox(height: 24),
-
-            // Banner atau informasi tambahan
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -126,17 +141,11 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 16),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // Panen Terbaru
             _sectionTitle("Panen Terbaru"),
             _listItem("Tomat", "10 kg - 2 Mei 2025"),
             _listItem("Cabai", "5 kg - 30 April 2025"),
-
             const SizedBox(height: 24),
-
-            // Notifikasi
             _sectionTitle("Notifikasi"),
             _listItem("Periksa kondisi tanah di lahan 2", "1 hari lalu"),
             _listItem("Update cuaca: kemungkinan hujan besok", "2 hari lalu"),
@@ -218,20 +227,23 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _quickAction(IconData icon, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            shape: BoxShape.circle,
+  Widget _quickAction(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 30, color: Colors.green),
           ),
-          child: Icon(icon, size: 30, color: Colors.green),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
     );
   }
 

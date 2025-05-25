@@ -9,7 +9,7 @@ class AdminReportsPage extends StatefulWidget {
 }
 
 class _AdminReportsPageState extends State<AdminReportsPage> {
-  int _selectedIndex = 1; // Index for Laporan tab
+  final int _selectedIndex = 1; // Index for Laporan tab
   String _selectedFilter = "Semua";
   int _currentPage = 1;
 

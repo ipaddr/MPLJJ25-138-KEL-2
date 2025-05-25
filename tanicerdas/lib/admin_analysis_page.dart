@@ -9,7 +9,7 @@ class AdminAnalysisPage extends StatefulWidget {
 }
 
 class _AdminAnalysisPageState extends State<AdminAnalysisPage> {
-  int _selectedIndex = 2; // Index for Analysis tab
+  final int _selectedIndex = 2; // Index for Analysis tab
   String _selectedPeriod = "6 Bulan Terakhir";
   String _selectedFarm = "Semua Pertanian";
 
