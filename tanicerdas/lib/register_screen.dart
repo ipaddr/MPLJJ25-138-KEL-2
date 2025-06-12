@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -83,9 +85,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  onPressed: () {
-                    // Logika daftar akun
+                  onPressed: () async {
+                    final name = nameController.text.trim();
+                    final phone = phoneController.text.trim();
+                    final region = regionController.text.trim();
+                    final password = passwordController.text.trim();
+                    final role = selectedRole;
+
+                    if (name.isEmpty ||
+                        phone.isEmpty ||
+                        region.isEmpty ||
+                        password.length < 8 ||
+                        role == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Mohon isi semua field dengan benar."),
+                        ),
+                      );
+                      return;
+                    }
+
+                    try {
+                      // Autentikasi Firebase
+                      final userCredential = await FirebaseAuth.instance
+                          .createUserWithEmailAndPassword(
+                            email:
+                                "$phone@tanicerdas.com", // Karena Firebase Auth butuh email
+                            password: password,
+                          );
+
+                      // Simpan data ke Firestore
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(userCredential.user!.uid)
+                          .set({
+                            'uid': userCredential.user!.uid,
+                            'name': name,
+                            'phone': phone,
+                            'region': region,
+                            'role': role,
+                          });
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Pendaftaran berhasil!")),
+                      );
+
+                      Navigator.pop(context); // Kembali ke halaman login
+                    } catch (e) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+                    }
                   },
+
                   child: const Text(
                     "Daftar Akun",
                     style: TextStyle(fontSize: 16),
