@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
@@ -64,6 +65,49 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder:
+            (_) => AlertDialog(
+              title: const Text('Login Gagal'),
+              content: Text('Google Sign-In gagal: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -235,15 +279,36 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Social login icons
+              // Social login icons (now active)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  FaIcon(FontAwesomeIcons.google, size: 32),
-                  SizedBox(width: 24),
-                  FaIcon(FontAwesomeIcons.facebook, size: 32),
-                  SizedBox(width: 24),
-                  FaIcon(FontAwesomeIcons.instagram, size: 32),
+                children: [
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.google, size: 32),
+                    onPressed: _isLoading ? null : _loginWithGoogle,
+                  ),
+                  const SizedBox(width: 24),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.facebook, size: 32),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Login Facebook belum tersedia"),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 24),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.instagram, size: 32),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Login Instagram belum tersedia"),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 24),

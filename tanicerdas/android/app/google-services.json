@@ -12,7 +12,20 @@
           "package_name": "com.example.tanicerdas"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "614623564680-s3c8m0rsdqrhe19rt9oddkcgrgf7tneo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tanicerdas",
+            "certificate_hash": "9a249e9a7b049240153977270ee5f11e6b2e921e"
+          }
+        },
+        {
+          "client_id": "614623564680-4fhqjn689ldpl2gisb19i2ob4cpm01fs.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyA2SCB5CbNMHK1Nn_8WhEAOSCJYmt12nis"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "614623564680-4fhqjn689ldpl2gisb19i2ob4cpm01fs.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "614623564680-otnm5t0n5k34fb2jfce01td7gm4d5638.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tanicerdas"
+              }
+            }
+          ]
         }
       }
     }
