@@ -1,13 +1,122 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'home_page.dart';
 import 'admin_login_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool _isLoading = false;
+
+  Future<void> _loginUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      await _auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      String error = '';
+      switch (e.code) {
+        case 'user-not-found':
+          error = 'Pengguna tidak ditemukan.';
+          break;
+        case 'wrong-password':
+          error = 'Password salah.';
+          break;
+        default:
+          error = 'Login gagal: ${e.message}';
+      }
+      showDialog(
+        context: context,
+        builder:
+            (_) => AlertDialog(
+              title: const Text('Login Gagal'),
+              content: Text(error),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder:
+            (_) => AlertDialog(
+              title: const Text('Login Gagal'),
+              content: Text('Google Sign-In gagal: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +127,11 @@ class LoginScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Hiasan atas
               Align(
                 alignment: Alignment.topCenter,
                 child: Image.asset('assets/top_decor.png'),
               ),
               const SizedBox(height: 20),
-
-              // Teks sambutan
               Text(
                 "Welcome",
                 style: GoogleFonts.poppins(
@@ -43,12 +149,10 @@ class LoginScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Logo
               Image.asset('assets/logo_tanicerdas.png', height: 100),
               const SizedBox(height: 24),
 
-              // Form: User ID
+              // Email field
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -58,7 +162,8 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               TextField(
-                keyboardType: TextInputType.text,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
                   hintText: "Enter User ID",
@@ -69,7 +174,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Form: Password
+              // Password field
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -79,6 +184,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               TextField(
+                controller: _passwordController,
                 obscureText: true,
                 textInputAction: TextInputAction.done,
                 decoration: InputDecoration(
@@ -95,19 +201,17 @@ class LoginScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HomePage()),
-                    );
-                  },
+                  onPressed: _isLoading ? null : _loginUser,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[700],
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text("Login"),
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text("Login"),
                 ),
               ),
               const SizedBox(height: 8),
@@ -136,7 +240,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Admin Login Button
+              // Admin Login
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -162,7 +266,7 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Divider OR
+              // Divider
               Row(
                 children: const [
                   Expanded(child: Divider()),
@@ -175,20 +279,41 @@ class LoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Sosial Media Login
+              // Social login icons (now active)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  FaIcon(FontAwesomeIcons.google, size: 32),
-                  SizedBox(width: 24),
-                  FaIcon(FontAwesomeIcons.facebook, size: 32),
-                  SizedBox(width: 24),
-                  FaIcon(FontAwesomeIcons.instagram, size: 32),
+                children: [
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.google, size: 32),
+                    onPressed: _isLoading ? null : _loginWithGoogle,
+                  ),
+                  const SizedBox(width: 24),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.facebook, size: 32),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Login Facebook belum tersedia"),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 24),
+                  IconButton(
+                    icon: const FaIcon(FontAwesomeIcons.instagram, size: 32),
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Login Instagram belum tersedia"),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
 
-              // Daftar akun
+              // Register
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

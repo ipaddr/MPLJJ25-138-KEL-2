@@ -1,22 +1,76 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class ForgotPasswordScreen extends StatelessWidget {
+class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
+
+  @override
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final TextEditingController phoneController = TextEditingController();
+  bool isLoading = false;
+
+  void sendCode() async {
+    final phoneNumber = phoneController.text.trim();
+
+    if (phoneNumber.isEmpty || phoneNumber.length < 10) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Masukkan nomor HP yang valid")),
+      );
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: '+62$phoneNumber', // Tambahkan kode negara sesuai kebutuhan
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (PhoneAuthCredential credential) {
+        // Auto-verify jika mungkin (di Android biasanya)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Verifikasi otomatis berhasil")),
+        );
+      },
+      verificationFailed: (FirebaseAuthException e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal mengirim kode: ${e.message}")),
+        );
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Kode OTP telah dikirim")));
+        // Navigasi ke halaman input kode OTP jika kamu punya
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {},
+    );
+
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    phoneController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(
-        0xFFE9F7F1,
-      ), // warna latar belakang hijau muda
+      backgroundColor: const Color(0xFFE9F7F1),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Tombol kembali
               GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Row(
@@ -34,17 +88,8 @@ class ForgotPasswordScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // Ilustrasi anak bertani
-              Center(
-                child: Image.asset(
-                  'assets/farmer_kid.png', // Ganti dengan nama file yang sesuai
-                  height: 120,
-                ),
-              ),
+              Center(child: Image.asset('assets/farmer_kid.png', height: 120)),
               const SizedBox(height: 24),
-
-              // Judul
               Center(
                 child: Text(
                   "Lupa Password?",
@@ -55,8 +100,6 @@ class ForgotPasswordScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-
-              // Subjudul
               Center(
                 child: Text(
                   "Tidak masalah, Tolong masukan nomor HP\nAnda untuk mereset password akun anda",
@@ -68,8 +111,6 @@ class ForgotPasswordScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Input nomor HP
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
@@ -82,6 +123,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
+                        controller: phoneController,
                         keyboardType: TextInputType.phone,
                         decoration: InputDecoration(
                           hintText: "Nomor HP",
@@ -94,17 +136,23 @@ class ForgotPasswordScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Tombol Kirim
               SizedBox(
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Tambahkan aksi kirim reset kode
-                  },
-                  icon: const Icon(Icons.arrow_forward),
-                  label: const Text("Kirim Kode Reset"),
+                  onPressed: isLoading ? null : sendCode,
+                  icon:
+                      isLoading
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : const Icon(Icons.arrow_forward),
+                  label: Text(isLoading ? "Mengirim..." : "Kirim Kode Reset"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF009A60),
                     shape: RoundedRectangleBorder(
@@ -118,8 +166,6 @@ class ForgotPasswordScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-
-              // Support
               Center(
                 child: Column(
                   children: [
