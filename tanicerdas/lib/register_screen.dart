@@ -124,6 +124,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             'phone': phone,
                             'region': region,
                             'role': role,
+                            'photoUrl':
+                                '', // Kosong dulu, bisa diupdate setelah upload foto
+                            'createdAt':
+                                FieldValue.serverTimestamp(), // Timestamp server
                           });
 
                       ScaffoldMessenger.of(context).showSnackBar(
