@@ -1,5 +1,12 @@
+// schedule_page.dart dengan Form Tambah Jadwal dan Firestore Integration + Hapus Jadwal
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'home_page.dart';
+import 'analysis_page.dart';
+import 'setting_page.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -10,6 +17,130 @@ class SchedulePage extends StatefulWidget {
 
 class _SchedulePageState extends State<SchedulePage> {
   int _selectedDay = DateTime.now().day;
+  DateTime? selectedDate;
+  final TextEditingController _judulController = TextEditingController();
+  final TextEditingController _descController = TextEditingController();
+  final TextEditingController _jenisController = TextEditingController();
+  String? uid;
+
+  @override
+  void initState() {
+    super.initState();
+    uid = FirebaseAuth.instance.currentUser?.uid;
+  }
+
+  void _openAddScheduleDialog() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Tambah Jadwal"),
+            content: SingleChildScrollView(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _judulController,
+                    decoration: const InputDecoration(
+                      labelText: 'Judul Kegiatan',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _jenisController,
+                    decoration: const InputDecoration(
+                      labelText: 'Jenis Kegiatan',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _descController,
+                    decoration: const InputDecoration(labelText: 'Deskripsi'),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.calendar_today),
+                    label: Text(
+                      selectedDate != null
+                          ? DateFormat('yyyy-MM-dd').format(selectedDate!)
+                          : "Pilih Tanggal",
+                    ),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setState(() {
+                          selectedDate = picked;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _judulController.clear();
+                  _descController.clear();
+                  _jenisController.clear();
+                  selectedDate = null;
+                },
+                child: const Text("Batal"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (_judulController.text.isNotEmpty &&
+                      selectedDate != null &&
+                      uid != null) {
+                    await FirebaseFirestore.instance
+                        .collection('schedule')
+                        .doc(uid)
+                        .collection('items')
+                        .add({
+                          'judulKegiatan': _judulController.text,
+                          'jenisKegiatan': _jenisController.text,
+                          'deskripsi': _descController.text,
+                          'tanggal': Timestamp.fromDate(selectedDate!),
+                          'createdAt': Timestamp.now(),
+                        });
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Jadwal berhasil ditambahkan"),
+                      ),
+                    );
+                    _judulController.clear();
+                    _descController.clear();
+                    _jenisController.clear();
+                    selectedDate = null;
+                    setState(() {});
+                  }
+                },
+                child: const Text("Simpan"),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _deleteSchedule(String docId) async {
+    if (uid == null) return;
+    await FirebaseFirestore.instance
+        .collection('schedule')
+        .doc(uid)
+        .collection('items')
+        .doc(docId)
+        .delete();
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Jadwal berhasil dihapus")));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,36 +149,11 @@ class _SchedulePageState extends State<SchedulePage> {
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        toolbarHeight: 80,
-        title: Row(
-          children: [
-            const CircleAvatar(
-              backgroundColor: Colors.grey,
-              radius: 25,
-              child: Icon(Icons.person, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  "Kebun Budi",
-                  style: TextStyle(fontSize: 16, color: Colors.black),
-                ),
-                Text(
-                  "Kemarau",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ],
+        toolbarHeight: 60,
+        title: const Text(
+          "Jadwal Kegiatan",
+          style: TextStyle(color: Colors.black),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 20),
-            child: Icon(Icons.notifications, color: Colors.black),
-          ),
-        ],
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -56,17 +162,13 @@ class _SchedulePageState extends State<SchedulePage> {
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
+              children: [
                 Text(
-                  "April 2025",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Row(
-                  children: [
-                    Icon(Icons.arrow_back_ios, size: 16),
-                    SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_ios, size: 16),
-                  ],
+                  DateFormat('MMMM yyyy').format(DateTime.now()),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -74,71 +176,100 @@ class _SchedulePageState extends State<SchedulePage> {
             _buildDatePicker(),
             const SizedBox(height: 20),
             const Text(
-              "Schedule Hari Ini",
+              "Schedule ",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            _buildTaskItem(
-              "Siram Tomat",
-              "Lahan 3",
-              LucideIcons.droplet,
-              Colors.blue.shade100,
-            ),
-            _buildTaskItem(
-              "Check Tanah",
-              "Lahan 1 & 2",
-              LucideIcons.sun,
-              Colors.yellow.shade100,
-            ),
-            _buildTaskItem(
-              "Komunitas Meeting",
-              "2:00 PM",
-              LucideIcons.users,
-              Colors.purple.shade100,
-            ),
+            uid == null
+                ? const Center(child: Text("User belum login"))
+                : StreamBuilder<QuerySnapshot>(
+                  stream:
+                      FirebaseFirestore.instance
+                          .collection('schedule')
+                          .doc(uid)
+                          .collection('items')
+                          .orderBy('tanggal')
+                          .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final data = snapshot.data!.docs;
+                    return Column(
+                      children:
+                          data.map((doc) {
+                            final tanggal =
+                                (doc['tanggal'] as Timestamp).toDate();
+                            return Dismissible(
+                              key: Key(doc.id),
+                              background: Container(
+                                color: Colors.red,
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                child: const Icon(
+                                  Icons.delete,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              direction: DismissDirection.endToStart,
+                              onDismissed:
+                                  (direction) => _deleteSchedule(doc.id),
+                              child: _buildTaskItem(
+                                doc['judulKegiatan'] ?? '',
+                                DateFormat('yyyy-MM-dd').format(tanggal),
+                                LucideIcons.calendar,
+                                Colors.green.shade100,
+                              ),
+                            );
+                          }).toList(),
+                    );
+                  },
+                ),
           ],
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: () {},
-            backgroundColor: Colors.green,
-            child: const Icon(Icons.add),
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton(
-            onPressed: () {},
-            backgroundColor: Colors.red,
-            child: const Icon(Icons.remove),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openAddScheduleDialog,
+        backgroundColor: Colors.green,
+        child: const Icon(Icons.add),
       ),
       bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
         currentIndex: 2,
+        selectedItemColor: Colors.green[700],
+        unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomePage()),
+            );
+          } else if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AnalysisPage()),
+            );
+          } else if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingPage()),
+            );
+          }
+        },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics),
-            label: "Analysis",
+            label: 'Analisis',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: "Schedule",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: "Settings",
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.schedule), label: 'Jadwal'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
   }
 
   Widget _buildDatePicker() {
+    final today = DateTime.now().day;
     final days = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
     final dates = List<int>.generate(30, (index) => index + 1);
 
@@ -226,7 +357,6 @@ class _SchedulePageState extends State<SchedulePage> {
         ),
         title: Text(title),
         subtitle: Text(subtitle),
-        trailing: Switch(value: false, onChanged: (value) {}),
       ),
     );
   }

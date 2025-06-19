@@ -11,6 +11,7 @@ class MapLahanPage extends StatefulWidget {
 class _MapLahanPageState extends State<MapLahanPage> {
   final String uid = 'DQ6PLYeoBvOEPLVIALceLFlQqZu2';
   late CollectionReference lahanRef;
+  late DocumentReference analysisRef;
   List<DocumentSnapshot> lahanList = [];
 
   @override
@@ -20,6 +21,7 @@ class _MapLahanPageState extends State<MapLahanPage> {
         .collection('lahan')
         .doc(uid)
         .collection('items');
+    analysisRef = FirebaseFirestore.instance.collection('analysis').doc(uid);
     fetchLahan();
   }
 
@@ -29,6 +31,13 @@ class _MapLahanPageState extends State<MapLahanPage> {
     setState(() {
       lahanList = snapshot.docs;
     });
+  }
+
+  Future<void> updateTotalLahan() async {
+    final snapshot = await lahanRef.get();
+    final total = snapshot.size;
+
+    await analysisRef.set({'totalLahan': total}, SetOptions(merge: true));
   }
 
   Future<void> addLahanDialog() async {
@@ -71,10 +80,15 @@ class _MapLahanPageState extends State<MapLahanPage> {
                   ),
                   Row(
                     children: [
-                      Checkbox(
-                        value: produktif,
-                        onChanged:
-                            (val) => setState(() => produktif = val ?? true),
+                      StatefulBuilder(
+                        builder:
+                            (context, setStateInner) => Checkbox(
+                              value: produktif,
+                              onChanged:
+                                  (val) => setStateInner(() {
+                                    produktif = val ?? true;
+                                  }),
+                            ),
                       ),
                       const Text("Produktif"),
                     ],
@@ -102,6 +116,8 @@ class _MapLahanPageState extends State<MapLahanPage> {
                     'createdAt': FieldValue.serverTimestamp(),
                   });
 
+                  await updateTotalLahan();
+
                   Navigator.pop(context);
                   fetchLahan();
                 }
@@ -115,6 +131,7 @@ class _MapLahanPageState extends State<MapLahanPage> {
 
   Future<void> deleteLahan(String docId) async {
     await lahanRef.doc(docId).delete();
+    await updateTotalLahan();
     fetchLahan();
   }
 

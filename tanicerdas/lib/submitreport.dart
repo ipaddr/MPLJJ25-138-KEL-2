@@ -1,7 +1,8 @@
+// submit_report_page.dart (Tanpa Dropdown Nama Tanaman)
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SubmitReportPage extends StatefulWidget {
   const SubmitReportPage({super.key});
@@ -13,27 +14,51 @@ class SubmitReportPage extends StatefulWidget {
 class _SubmitReportPageState extends State<SubmitReportPage> {
   String selectedCategory = 'Panen';
   DateTime? selectedDate;
-  File? _image;
-  final picker = ImagePicker();
-
   final TextEditingController _dateController = TextEditingController();
-  final TextEditingController _lokasiController = TextEditingController();
+  final TextEditingController _judulController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+  final TextEditingController _jumlahPanenController = TextEditingController();
+  final TextEditingController _namaTanamanController = TextEditingController();
+  String? selectedLahan;
+  final String uid = FirebaseAuth.instance.currentUser!.uid;
 
-  final List<Map<String, String>> previousReports = [
-    {
-      'kategori': 'Panen',
-      'judul': 'Panen Padi Di Lahan Utara',
-      'tanggal': '2025-04-20',
-      'lokasi': 'Lahan Utara - Block A',
-    },
-    {
-      'kategori': 'Rusak',
-      'judul': 'Kerusakan Hama Di Lahan Selatan',
-      'tanggal': '2025-04-19',
-      'lokasi': 'Lahan Selatan - Block C',
-    },
-  ];
+  List<String> lahanOptions = [];
+  List<Map<String, dynamic>> previousReports = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchLahanOptions();
+    fetchPreviousReports();
+  }
+
+  Future<void> fetchLahanOptions() async {
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('lahan')
+            .doc(uid)
+            .collection('items')
+            .get();
+
+    setState(() {
+      lahanOptions =
+          snapshot.docs.map((doc) => doc.data()['nama'] as String).toList();
+    });
+  }
+
+  Future<void> fetchPreviousReports() async {
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('reports')
+            .doc(uid)
+            .collection('report_user')
+            .orderBy('tanggal', descending: true)
+            .get();
+
+    setState(() {
+      previousReports = snapshot.docs.map((doc) => doc.data()).toList();
+    });
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -50,13 +75,44 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
     }
   }
 
-  Future<void> _getImage() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> submitReport() async {
+    if (selectedDate == null ||
+        selectedLahan == null ||
+        _judulController.text.isEmpty)
+      return;
+
+    await FirebaseFirestore.instance
+        .collection('reports')
+        .doc(uid)
+        .collection('report_user')
+        .add({
+          'kategori': selectedCategory,
+          'judul': _judulController.text,
+          'tanggal': selectedDate,
+          'lokasi': selectedLahan,
+          'deskripsi': _descController.text,
+          'namaTanaman': _namaTanamanController.text,
+          'jumlahPanen': _jumlahPanenController.text,
+          'uid': uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Report berhasil dikirim!')));
+
+    _judulController.clear();
+    _descController.clear();
+    _dateController.clear();
+    _jumlahPanenController.clear();
+    _namaTanamanController.clear();
     setState(() {
-      if (pickedFile != null) {
-        _image = File(pickedFile.path);
-      }
+      selectedLahan = null;
+      selectedDate = null;
     });
+
+    fetchPreviousReports();
   }
 
   Widget _categoryButton(String label, IconData icon) {
@@ -89,6 +145,7 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
     TextEditingController controller, {
     bool readOnly = false,
     VoidCallback? onTap,
+    int maxLines = 1,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,6 +155,7 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
           controller: controller,
           readOnly: readOnly,
           onTap: onTap,
+          maxLines: maxLines,
           decoration: InputDecoration(
             labelText: label,
             filled: true,
@@ -110,33 +168,26 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
     );
   }
 
-  Widget _buildPhotoPicker() {
-    return GestureDetector(
-      onTap: _getImage,
-      child: Container(
-        height: 100,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.grey[100],
-        ),
-        child:
-            _image == null
-                ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.camera_alt, color: Colors.grey),
-                      SizedBox(height: 4),
-                      Text(
-                        "Tekan untuk\nMenambah photo",
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                )
-                : Image.file(_image!, fit: BoxFit.cover),
+  Widget _buildLahanDropdown() {
+    return DropdownButtonFormField<String>(
+      value: selectedLahan,
+      items:
+          lahanOptions
+              .map(
+                (lahan) => DropdownMenuItem(value: lahan, child: Text(lahan)),
+              )
+              .toList(),
+      decoration: const InputDecoration(
+        labelText: 'Lokasi Lahan',
+        border: OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
       ),
+      onChanged: (value) {
+        setState(() {
+          selectedLahan = value;
+        });
+      },
     );
   }
 
@@ -151,7 +202,17 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
         ),
         const SizedBox(height: 8),
         ...previousReports.map((report) {
-          final isPanen = report['kategori'] == 'Panen';
+          final kategori = report['kategori'] ?? 'Tidak Diketahui';
+          final isPanen = kategori == 'Panen';
+          final judul = report['judul'] ?? 'Tanpa Judul';
+          final lokasi = report['lokasi'] ?? 'Lokasi tidak tersedia';
+          final tanggal =
+              report['tanggal'] is Timestamp
+                  ? DateFormat(
+                    'yyyy-MM-dd',
+                  ).format((report['tanggal'] as Timestamp).toDate())
+                  : 'Tanggal tidak tersedia';
+
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
@@ -178,7 +239,7 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    report['kategori']!,
+                    kategori,
                     style: TextStyle(
                       fontSize: 12,
                       color: isPanen ? Colors.green : Colors.red,
@@ -191,7 +252,7 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        report['judul']!,
+                        judul,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 4),
@@ -204,7 +265,7 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            report['lokasi']!,
+                            lokasi,
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
@@ -216,7 +277,7 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
                   ),
                 ),
                 Text(
-                  report['tanggal']!,
+                  tanggal,
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
@@ -258,10 +319,13 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
               readOnly: true,
               onTap: () => _selectDate(context),
             ),
-            _buildTextField("Lokasi", _lokasiController),
-            _buildTextField("Description", _descController),
             const SizedBox(height: 12),
-            _buildPhotoPicker(),
+            _buildTextField("Judul Report", _judulController),
+            const SizedBox(height: 12),
+            _buildLahanDropdown(),
+            _buildTextField("Nama Tanaman", _namaTanamanController),
+            _buildTextField("Jumlah Panen (kg)", _jumlahPanenController),
+            _buildTextField("Deskripsi", _descController, maxLines: 3),
             _buildPreviousReports(),
             const SizedBox(height: 24),
             SizedBox(
@@ -274,9 +338,7 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                onPressed: () {
-                  // Tambahkan logika submit
-                },
+                onPressed: submitReport,
                 child: const Text(
                   "Submit Report",
                   style: TextStyle(fontSize: 16),

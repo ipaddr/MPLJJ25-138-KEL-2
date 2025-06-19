@@ -23,7 +23,7 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   String? uid;
   int totalLahan = 0;
-  int totalPanen = 0;
+  double totalPanen = 0;
   List<Map<String, dynamic>> panenTerbaru = [];
   List<Map<String, dynamic>> notifikasi = [];
 
@@ -40,19 +40,36 @@ class _HomePageState extends State<HomePage> {
     final analysisDoc =
         await FirebaseFirestore.instance.collection('analysis').doc(uid).get();
 
-    final tanamanSnapshot =
+    // Hitung totalPanen dari semua subkoleksi tanaman
+    double totalPanenBaru = 0;
+    final indexSnapshot =
         await FirebaseFirestore.instance
             .collection('tanaman')
-            .where('uid', isEqualTo: uid)
+            .doc(uid)
+            .collection('_index')
             .get();
+
+    for (final doc in indexSnapshot.docs) {
+      final subcollectionSnapshot =
+          await FirebaseFirestore.instance
+              .collection('tanaman')
+              .doc(uid)
+              .collection(doc.id)
+              .get();
+
+      for (final tanamanDoc in subcollectionSnapshot.docs) {
+        final data = tanamanDoc.data();
+        totalPanenBaru += (data['jumlah'] ?? 0).toDouble();
+      }
+    }
 
     final laporanSnapshot =
         await FirebaseFirestore.instance
             .collection('reports')
             .doc(uid)
             .collection('report_user')
-            .orderBy('tanggal', descending: true) // urutkan
-            .limit(1) // hanya ambil satu
+            .orderBy('tanggal', descending: true)
+            .limit(1)
             .get();
 
     final scheduleSnapshot =
@@ -60,22 +77,23 @@ class _HomePageState extends State<HomePage> {
             .collection('schedule')
             .doc(uid)
             .collection('items')
-            .orderBy('tanggal', descending: true)
-            .limit(5)
+            .limit(2)
             .get();
 
     if (analysisDoc.exists) {
       final data = analysisDoc.data();
       setState(() {
         totalLahan = data?['totalLahan'] ?? 0;
-        totalPanen = data?['totalPanen'] ?? 0;
       });
     } else {
       setState(() {
         totalLahan = 0;
-        totalPanen = 0;
       });
     }
+
+    setState(() {
+      totalPanen = totalPanenBaru;
+    });
 
     if (laporanSnapshot.docs.isNotEmpty) {
       final data = laporanSnapshot.docs.first.data();
