@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminReportsPage extends StatefulWidget {
   const AdminReportsPage({super.key});
@@ -8,57 +9,66 @@ class AdminReportsPage extends StatefulWidget {
 }
 
 class _AdminReportsPageState extends State<AdminReportsPage> {
-  final int _selectedIndex = 1; // Index for Laporan tab
+  final int _selectedIndex = 1;
   String _selectedFilter = "Semua";
   int _currentPage = 1;
 
-  final List<Map<String, dynamic>> _reports = [
-    {
-      'name': 'Agil Abrar',
-      'location': 'Kecamatan Pauh dan sekitarnya',
-      'date': '27 Mei 2025',
-      'status': 'Belum Dibaca',
-      'type': 'Stock',
-      'color': Colors.blue,
-      'icon': Icons.store,
-    },
-    {
-      'name': 'Indah Iasha',
-      'location': 'Kecamatan Lubuk Begalung',
-      'date': '18 Mei 2025',
-      'status': '',
-      'type': 'Panen',
-      'color': Colors.green,
-      'icon': Icons.grass,
-    },
-    {
-      'name': 'Riski Gunawan',
-      'location': 'Kecamatan Koto Tangah',
-      'date': '2 Mei 2025',
-      'status': '',
-      'type': 'Rusak',
-      'color': Colors.orange,
-      'icon': Icons.bug_report,
-    },
-    {
-      'name': 'Desri Yanda',
-      'location': 'Kecamatan Koto Tangah',
-      'date': '2 Mei 2025',
-      'status': '',
-      'type': 'Rusak',
-      'color': Colors.orange,
-      'icon': Icons.bug_report,
-    },
-  ];
+  List<DocumentSnapshot> _reports = [];
 
-  List<Map<String, dynamic>> get filteredReports {
+  @override
+  void initState() {
+    super.initState();
+    fetchReports();
+  }
+
+  Future<void> fetchReports() async {
+    final query =
+        await FirebaseFirestore.instance
+            .collection('allreport')
+            .orderBy('tanggal', descending: true)
+            .limit(20)
+            .get();
+    setState(() {
+      _reports = query.docs;
+    });
+  }
+
+  List<DocumentSnapshot> get filteredReports {
     if (_selectedFilter == "Semua") {
       return _reports;
     } else {
       return _reports
-          .where((report) => report['type'] == _selectedFilter)
+          .where((doc) => doc['kategori'] == _selectedFilter)
           .toList();
     }
+  }
+
+  void _showReportDetails(Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            title: Text(data['judul'] ?? '-'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Kategori: ${data['kategori'] ?? '-'}"),
+                Text("Lokasi: ${data['lokasi'] ?? '-'}"),
+                Text(
+                  "Tanggal: ${(data['tanggal'] as Timestamp?)?.toDate().toString() ?? '-'}",
+                ),
+                Text("Deskripsi: ${data['deskripsi'] ?? '-'}"),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Tutup"),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
@@ -71,26 +81,10 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
           "Laporan Pertanian",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.white.withOpacity(0.9),
-              child: const Text(
-                "A",
-                style: TextStyle(
-                  color: Color(0xFF4CAF50),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Container(
@@ -115,8 +109,6 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
               ),
             ),
           ),
-
-          // Filter Tabs
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: SingleChildScrollView(
@@ -134,10 +126,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
-
-          // Reports Title
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
@@ -145,56 +134,31 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
-
           const SizedBox(height: 10),
-
-          // Reports List
           Expanded(
             child: ListView.builder(
               itemCount: filteredReports.length,
               itemBuilder: (context, index) {
                 final report = filteredReports[index];
-                return _buildReportItem(
-                  name: report['name'],
-                  location: report['location'],
-                  date: report['date'],
-                  status: report['status'],
-                  color: report['color'],
-                  icon: report['icon'],
+                final data = report.data() as Map<String, dynamic>;
+                return GestureDetector(
+                  onTap: () => _showReportDetails(data),
+                  child: _buildReportItem(
+                    title: data['judul'] ?? '-',
+                    location: data['lokasi'] ?? '-',
+                    date:
+                        (data['tanggal'] as Timestamp?)
+                            ?.toDate()
+                            .toString()
+                            .split(' ')
+                            .first ??
+                        '-',
+                    status: data['status'] ?? '',
+                    color: Colors.green,
+                    icon: Icons.article,
+                  ),
                 );
               },
-            ),
-          ),
-
-          // Pagination
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildPaginationButton(
-                  icon: Icons.chevron_left,
-                  onPressed:
-                      _currentPage > 1
-                          ? () {
-                            setState(() {
-                              _currentPage--;
-                            });
-                          }
-                          : null,
-                ),
-                _buildPageButton(1),
-                _buildPageButton(2),
-                _buildPageButton(3),
-                _buildPaginationButton(
-                  icon: Icons.chevron_right,
-                  onPressed: () {
-                    setState(() {
-                      _currentPage++;
-                    });
-                  },
-                ),
-              ],
             ),
           ),
         ],
@@ -228,11 +192,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
   Widget _buildFilterChip(String label) {
     final isSelected = _selectedFilter == label;
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedFilter = label;
-        });
-      },
+      onTap: () => setState(() => _selectedFilter = label),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
@@ -254,7 +214,7 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
   }
 
   Widget _buildReportItem({
-    required String name,
+    required String title,
     required String location,
     required String date,
     required String status,
@@ -266,7 +226,6 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Colored indicator line
           Container(
             width: 4,
             height: 80,
@@ -276,8 +235,6 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
             ),
           ),
           const SizedBox(width: 12),
-
-          // Icon circle
           Container(
             width: 50,
             height: 50,
@@ -288,14 +245,12 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
             child: Icon(icon, color: Colors.black54),
           ),
           const SizedBox(width: 12),
-
-          // Report details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  name,
+                  title,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -314,8 +269,6 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
               ],
             ),
           ),
-
-          // Status (if any)
           if (status.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -333,53 +286,6 @@ class _AdminReportsPageState extends State<AdminReportsPage> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPaginationButton({
-    required IconData icon,
-    required VoidCallback? onPressed,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        style: IconButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(color: Colors.grey.shade300),
-          ),
-          backgroundColor: Colors.white,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPageButton(int page) {
-    final isSelected = _currentPage == page;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      child: ElevatedButton(
-        onPressed: () {
-          setState(() {
-            _currentPage = page;
-          });
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSelected ? const Color(0xFF4CAF50) : Colors.white,
-          foregroundColor: isSelected ? Colors.white : Colors.black,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color:
-                  isSelected ? const Color(0xFF4CAF50) : Colors.grey.shade300,
-            ),
-          ),
-          minimumSize: const Size(40, 40),
-        ),
-        child: Text(page.toString()),
       ),
     );
   }

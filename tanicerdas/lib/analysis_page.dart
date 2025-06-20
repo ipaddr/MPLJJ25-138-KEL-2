@@ -1,11 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'home_page.dart'; // Import home page untuk navigasi
-import 'schedule_page.dart'; // Import schedule page
-import 'setting_page.dart'; // Import setting page
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
+import 'home_page.dart';
+import 'schedule_page.dart';
+import 'setting_page.dart';
+import 'chatbot_screen.dart';
 
-class AnalysisPage extends StatelessWidget {
+class AnalysisPage extends StatefulWidget {
   const AnalysisPage({super.key});
+
+  @override
+  State<AnalysisPage> createState() => _AnalysisPageState();
+}
+
+class _AnalysisPageState extends State<AnalysisPage> {
+  Map<String, double> kategoriData = {};
+  List<FlSpot> timeSeriesSpots = [];
+  List<String> timeLabels = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChartData();
+  }
+
+  Future<void> _loadChartData() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final indexSnapshot =
+        await FirebaseFirestore.instance
+            .collection('tanaman')
+            .doc(uid)
+            .collection('_index')
+            .get();
+
+    final Map<String, double> kategoriMap = {};
+    final Map<String, double> timeSeriesMap = {};
+
+    for (final doc in indexSnapshot.docs) {
+      final tanamanSnapshot =
+          await FirebaseFirestore.instance
+              .collection('tanaman')
+              .doc(uid)
+              .collection(doc.id)
+              .get();
+
+      for (final tanamanDoc in tanamanSnapshot.docs) {
+        final data = tanamanDoc.data();
+        final jumlah = (data['jumlah'] ?? 0).toDouble();
+
+        DateTime? tanggal;
+        final tanggalString = data['tanggalTanam'];
+        if (tanggalString is String) {
+          try {
+            tanggal = DateFormat('d/M/yyyy').parse(tanggalString);
+          } catch (_) {
+            tanggal = null;
+          }
+        }
+
+        final jenis = doc.id;
+        kategoriMap[jenis] = (kategoriMap[jenis] ?? 0) + jumlah;
+
+        if (tanggal != null) {
+          final key =
+              '${tanggal.year}-${tanggal.month.toString().padLeft(2, '0')}';
+          timeSeriesMap[key] = (timeSeriesMap[key] ?? 0) + jumlah;
+        }
+      }
+    }
+
+    kategoriMap.removeWhere((key, value) => value == 0);
+    final sortedTimeKeys = timeSeriesMap.keys.toList()..sort();
+
+    setState(() {
+      kategoriData = kategoriMap;
+      timeLabels = sortedTimeKeys;
+      timeSeriesSpots = List.generate(
+        sortedTimeKeys.length,
+        (i) => FlSpot(i.toDouble(), timeSeriesMap[sortedTimeKeys[i]] ?? 0),
+      );
+    });
+  }
+
+  double getMaxKategoriValue() {
+    if (kategoriData.isEmpty) return 10;
+    return kategoriData.values.reduce((a, b) => a > b ? a : b);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,134 +99,154 @@ class AnalysisPage extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
         backgroundColor: Colors.green[700],
-        actions: [
-          IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert)),
-        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Dropdown Filter
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _dropdownFilter("Semua Lahan"),
-                _dropdownFilter("30 Hari Terakhir"),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Produktivitas Trend
-            _sectionCard(
-              title: "Produktivitas Trend",
-              child: SizedBox(
-                height: 200,
-                child: LineChart(
-                  LineChartData(
-                    titlesData: FlTitlesData(show: true),
-                    gridData: FlGridData(show: true),
-                    borderData: FlBorderData(show: true),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: [
-                          FlSpot(0, 30),
-                          FlSpot(1, 35),
-                          FlSpot(2, 33),
-                          FlSpot(3, 50),
-                          FlSpot(4, 50),
-                          FlSpot(5, 60),
-                          FlSpot(6, 70),
-                        ],
-                        isCurved: true,
-                        color: Colors.green,
-                        barWidth: 3,
-                        belowBarData: BarAreaData(show: false),
-                        dotData: FlDotData(show: false),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Performa Lahan
-            _sectionCard(
-              title: "Performa Lahan",
-              child: SizedBox(
-                height: 200,
-                child: BarChart(
-                  BarChartData(
-                    barGroups: [
-                      _barGroup(0, 400),
-                      _barGroup(1, 430),
-                      _barGroup(2, 448),
-                      _barGroup(3, 470),
-                      _barGroup(4, 540),
-                    ],
-                    titlesData: FlTitlesData(
-                      leftTitles: AxisTitles(),
-                      rightTitles: AxisTitles(),
-                      topTitles: AxisTitles(),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, _) {
-                            switch (value.toInt()) {
-                              case 0:
-                                return const Text("Utara");
-                              case 1:
-                                return const Text("Timur");
-                              case 2:
-                                return const Text("Barat");
-                              case 3:
-                                return const Text("Selatan");
-                              case 4:
-                                return const Text("Pusat");
-                              default:
-                                return const SizedBox();
-                            }
-                          },
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  _sectionCard(
+                    title: "Produktivitas per Kategori",
+                    child: SizedBox(
+                      height: 200,
+                      child: BarChart(
+                        BarChartData(
+                          barGroups: _buildKategoriBarData(kategoriData),
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final keys = kategoriData.keys.toList();
+                                  if (value.toInt() < keys.length) {
+                                    return SideTitleWidget(
+                                      axisSide: meta.axisSide,
+                                      child: Text(
+                                        keys[value.toInt()],
+                                        style: const TextStyle(fontSize: 10),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox();
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: getMaxKategoriValue() / 4,
+                                getTitlesWidget:
+                                    (value, meta) =>
+                                        Text(value.toInt().toString()),
+                              ),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          gridData: FlGridData(show: false),
+                          barTouchData: BarTouchData(enabled: true),
                         ),
                       ),
                     ),
-                    borderData: FlBorderData(show: false),
-                    gridData: FlGridData(show: false),
+                  ),
+                  const SizedBox(height: 16),
+                  _sectionCard(
+                    title: "Tren Produktivitas Bulanan",
+                    child: SizedBox(
+                      height: 200,
+                      child: LineChart(
+                        LineChartData(
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: timeSeriesSpots,
+                              isCurved: true,
+                              color: Colors.green,
+                              barWidth: 3,
+                              dotData: FlDotData(show: true),
+                              belowBarData: BarAreaData(show: false),
+                            ),
+                          ],
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                reservedSize: 36,
+                                getTitlesWidget: (value, meta) {
+                                  if (value.toInt() < timeLabels.length &&
+                                      value.toInt() % 2 == 0) {
+                                    final label = timeLabels[value.toInt()]
+                                        .replaceAll('-', '/');
+                                    return Transform.rotate(
+                                      angle: -0.4,
+                                      child: Text(
+                                        label,
+                                        style: const TextStyle(fontSize: 10),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox();
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 20,
+                                getTitlesWidget:
+                                    (value, meta) => Text('${value.toInt()}'),
+                              ),
+                            ),
+                          ),
+                          gridData: FlGridData(show: true),
+                          borderData: FlBorderData(show: true),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChatBotScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.chat_bubble_outline),
+                label: const Text("Tanya AI"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
             ),
-
-            const SizedBox(height: 16),
-
-            // Analisis Stok Makanan
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  "Analisis Stok Makanan",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Text("Lihat Semua", style: TextStyle(color: Colors.green)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _stockItem("Gandum", "2.5M ton", Icons.local_florist),
-            _stockItem("Padi", "1.8M ton", Icons.grass),
-            _stockItem("Jagung", "3.2M ton", Icons.emoji_nature),
-          ],
-        ),
+          ),
+        ],
       ),
+
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1, // Index untuk halaman analysis
+        currentIndex: 1,
         selectedItemColor: Colors.green[700],
         unselectedItemColor: Colors.grey,
         onTap: (index) {
-          // Navigasi sesuai dengan item yang dipilih
           if (index == 0) {
             Navigator.pushReplacement(
               context,
@@ -159,7 +263,6 @@ class AnalysisPage extends StatelessWidget {
               MaterialPageRoute(builder: (context) => const SettingPage()),
             );
           }
-          // Jika index 1 (halaman saat ini), tidak melakukan apa-apa
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
@@ -174,17 +277,21 @@ class AnalysisPage extends StatelessWidget {
     );
   }
 
-  Widget _dropdownFilter(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [Text(label), const Icon(Icons.keyboard_arrow_down)],
-      ),
-    );
+  List<BarChartGroupData> _buildKategoriBarData(Map<String, double> data) {
+    int index = 0;
+    return data.entries.map((entry) {
+      return BarChartGroupData(
+        x: index++,
+        barRods: [
+          BarChartRodData(
+            toY: entry.value,
+            color: Colors.green,
+            width: 14,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ],
+      );
+    }).toList();
   }
 
   Widget _sectionCard({required String title, required Widget child}) {
@@ -193,6 +300,9 @@ class AnalysisPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        ],
       ),
       width: double.infinity,
       child: Column(
@@ -205,59 +315,6 @@ class AnalysisPage extends StatelessWidget {
           const SizedBox(height: 12),
           child,
         ],
-      ),
-    );
-  }
-
-  static BarChartGroupData _barGroup(int x, double y) {
-    return BarChartGroupData(
-      x: x,
-      barRods: [
-        BarChartRodData(
-          toY: y,
-          color: Colors.green,
-          width: 16,
-          borderRadius: BorderRadius.circular(4),
-          backDrawRodData: BackgroundBarChartRodData(show: false),
-        ),
-      ],
-    );
-  }
-
-  Widget _stockItem(String name, String amount, IconData icon) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.orange),
-        title: Text(name),
-        subtitle: Text(amount),
-        trailing: SizedBox(
-          width: 60,
-          height: 30,
-          child: LineChart(
-            LineChartData(
-              lineBarsData: [
-                LineChartBarData(
-                  spots: [
-                    FlSpot(0, 1),
-                    FlSpot(1, 1.2),
-                    FlSpot(2, 1.4),
-                    FlSpot(3, 1.3),
-                    FlSpot(4, 1.6),
-                  ],
-                  isCurved: true,
-                  barWidth: 2,
-                  color: Colors.green,
-                  dotData: FlDotData(show: false),
-                  belowBarData: BarAreaData(show: false),
-                ),
-              ],
-              titlesData: FlTitlesData(show: false),
-              gridData: FlGridData(show: false),
-              borderData: FlBorderData(show: false),
-            ),
-          ),
-        ),
       ),
     );
   }

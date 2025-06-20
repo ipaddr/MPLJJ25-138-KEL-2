@@ -1,18 +1,101 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class TambahTanamanPage extends StatelessWidget {
+class TambahTanamanPage extends StatefulWidget {
   const TambahTanamanPage({super.key});
 
   @override
+  State<TambahTanamanPage> createState() => _TambahTanamanPageState();
+}
+
+class _TambahTanamanPageState extends State<TambahTanamanPage> {
+  final TextEditingController jumlahController = TextEditingController();
+  final TextEditingController tanggalController = TextEditingController();
+  final TextEditingController catatanController = TextEditingController();
+  final TextEditingController tipeTanamanController = TextEditingController();
+
+  String? tipeTanaman;
+  String? namaLahan;
+  final String uid = FirebaseAuth.instance.currentUser!.uid;
+  List<String> lahanOptions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchLahanOptions();
+  }
+
+  Future<void> fetchLahanOptions() async {
+    final snapshot =
+        await FirebaseFirestore.instance
+            .collection('lahan')
+            .doc(uid)
+            .collection('items')
+            .get();
+
+    setState(() {
+      lahanOptions =
+          snapshot.docs.map((doc) => doc.data()['nama'] as String).toList();
+    });
+  }
+
+  Future<void> submitTanaman() async {
+    final namaTanaman = tipeTanaman?.trim().toLowerCase();
+    if (namaTanaman == null || namaTanaman.isEmpty || namaLahan == null) return;
+
+    final tanamanRef = FirebaseFirestore.instance
+        .collection('tanaman')
+        .doc(uid)
+        .collection(namaTanaman);
+
+    await tanamanRef.add({
+      'jumlah': double.tryParse(jumlahController.text) ?? 0,
+      'tanggalTanam': tanggalController.text,
+      'catatan': catatanController.text,
+      'namaLahan': namaLahan,
+      'createdAt': FieldValue.serverTimestamp(),
+      'uid': uid,
+    });
+
+    // Tambahkan ke koleksi _index agar bisa dibaca di halaman lain
+    final indexRef = FirebaseFirestore.instance
+        .collection('tanaman')
+        .doc(uid)
+        .collection('_index')
+        .doc(namaTanaman);
+
+    await indexRef.set({
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // Simpan juga ke koleksi alltanaman (global data tanaman per user)
+    final allTanamanRef = FirebaseFirestore.instance.collection('alltamanan');
+
+    await allTanamanRef.add({
+      'uid': uid,
+      'namaTanaman': namaTanaman,
+      'jumlah': double.tryParse(jumlahController.text) ?? 0,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Data tanaman berhasil ditambahkan!')),
+    );
+
+    jumlahController.clear();
+    tanggalController.clear();
+    catatanController.clear();
+    tipeTanamanController.clear();
+    setState(() {
+      tipeTanaman = null;
+      namaLahan = null;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final TextEditingController jumlahController = TextEditingController();
-    final TextEditingController tanggalController = TextEditingController();
-    final TextEditingController namaLahanController = TextEditingController();
-    final TextEditingController catatanController = TextEditingController();
-
-    String? tipeTanaman;
-    String? lokasiDaerah;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tambah Tanaman'),
@@ -26,25 +109,20 @@ class TambahTanamanPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Masukan Informasi Tanaman',
+              'Masukkan Informasi Tanaman',
               style: TextStyle(fontSize: 14, color: Colors.black54),
             ),
             const SizedBox(height: 16),
 
-            // Dropdown Tipe Tanaman
-            DropdownButtonFormField<String>(
+            // Input Nama Tanaman
+            TextField(
+              controller: tipeTanamanController,
               decoration: const InputDecoration(
-                labelText: 'Tipe',
-                hintText: 'Pilih Tanaman',
+                labelText: 'Nama Tanaman',
+                hintText: 'Masukkan Nama Tanaman',
                 border: OutlineInputBorder(),
               ),
-              items: const [
-                DropdownMenuItem(value: 'Padi', child: Text('Padi')),
-                DropdownMenuItem(value: 'Jagung', child: Text('Jagung')),
-              ],
-              onChanged: (value) {
-                tipeTanaman = value;
-              },
+              onChanged: (value) => setState(() => tipeTanaman = value),
             ),
             const SizedBox(height: 16),
 
@@ -54,7 +132,7 @@ class TambahTanamanPage extends StatelessWidget {
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: 'Jumlah Tanaman (kg)',
-                hintText: 'Masukan Jumlah',
+                hintText: 'Masukkan Jumlah',
                 border: OutlineInputBorder(),
                 suffixIcon: Icon(Icons.scale),
               ),
@@ -86,31 +164,21 @@ class TambahTanamanPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Lokasi
+            // Nama Lahan Dropdown
             DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Lokasi',
-                hintText: 'Pilih Daerah',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'Padang', child: Text('Padang')),
-                DropdownMenuItem(
-                  value: 'Bukittinggi',
-                  child: Text('Bukittinggi'),
-                ),
-              ],
-              onChanged: (value) {
-                lokasiDaerah = value;
-              },
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: namaLahanController,
               decoration: const InputDecoration(
                 labelText: 'Nama Lahan',
                 border: OutlineInputBorder(),
               ),
+              value: namaLahan,
+              items:
+                  lahanOptions
+                      .map(
+                        (lahan) =>
+                            DropdownMenuItem(value: lahan, child: Text(lahan)),
+                      )
+                      .toList(),
+              onChanged: (value) => setState(() => namaLahan = value),
             ),
             const SizedBox(height: 16),
 
@@ -131,14 +199,12 @@ class TambahTanamanPage extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.check),
-                label: const Text('Masukan Data'),
+                label: const Text('Masukkan Data'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[700],
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () {
-                  // Tambahkan aksi saat tombol ditekan
-                },
+                onPressed: submitTanaman,
               ),
             ),
           ],

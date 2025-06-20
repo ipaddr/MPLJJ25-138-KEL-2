@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'home_page.dart';
 import 'analysis_page.dart';
 import 'schedule_page.dart';
@@ -12,14 +15,48 @@ class SettingPage extends StatefulWidget {
 
 class _SettingPageState extends State<SettingPage> {
   final int _selectedIndex = 3;
+  final _formKey = GlobalKey<FormState>();
+  final _namaController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _regionController = TextEditingController();
 
-  bool _lokasiService = true;
-  bool _cuacaNotif = true;
-  bool _pasarNotif = false;
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final data = doc.data();
+    if (data != null) {
+      _namaController.text = data['nama'] ?? '';
+      _phoneController.text = data['phone'] ?? '';
+      _regionController.text = data['region'] ?? '';
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'nama': _namaController.text.trim(),
+      'phone': _phoneController.text.trim(),
+      'region': _regionController.text.trim(),
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Profil berhasil diperbarui")));
+  }
 
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
-
     switch (index) {
       case 0:
         Navigator.pushReplacement(
@@ -39,29 +76,30 @@ class _SettingPageState extends State<SettingPage> {
           MaterialPageRoute(builder: (_) => const SchedulePage()),
         );
         break;
-      case 3:
-        // sudah di halaman ini
-        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Pengaturan'),
-        backgroundColor: Colors.green,
+        title: const Text('Edit Profil'),
         centerTitle: true,
+        backgroundColor: Colors.green[700],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 4),
+                ],
               ),
               child: Row(
                 children: [
@@ -72,96 +110,80 @@ class _SettingPageState extends State<SettingPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Kebun Budi',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
+                          _namaController.text,
+                          style: const TextStyle(
                             fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
-                          'Farm ID: #12345',
-                          style: TextStyle(color: Colors.grey),
+                          "UID: ${FirebaseAuth.instance.currentUser?.uid.substring(0, 8)}...",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.edit, color: Colors.green),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
-            sectionCard(
-              title: 'Settings Umum',
-              children: [
-                settingTile(
-                  Icons.language,
-                  'Bahasa',
-                  trailing: const Text('Indonesia'),
-                ),
-                switchTile(
-                  icon: Icons.location_on,
-                  title: 'Lokasi Service',
-                  value: _lokasiService,
-                  onChanged: (val) => setState(() => _lokasiService = val),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            sectionCard(
-              title: 'Notifikasi',
-              children: [
-                switchTile(
-                  icon: Icons.cloud,
-                  title: 'Pemberitahuan Cuaca',
-                  value: _cuacaNotif,
-                  onChanged: (val) => setState(() => _cuacaNotif = val),
-                ),
-                switchTile(
-                  icon: Icons.storefront,
-                  title: 'Pembaruan Pasar',
-                  value: _pasarNotif,
-                  onChanged: (val) => setState(() => _pasarNotif = val),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            sectionCard(
-              title: 'Akun',
-              children: [
-                settingTile(Icons.storage, 'Penggunaan Data'),
-                settingTile(Icons.help_outline, 'Bantuan & Support'),
-                settingTile(Icons.privacy_tip, 'Kebijakan Privasi'),
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text(
-                    'Keluar',
-                    style: TextStyle(color: Colors.red),
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  buildField("Nama Lengkap", Icons.person, _namaController),
+                  const SizedBox(height: 16),
+                  buildField(
+                    "Nomor Telepon",
+                    Icons.phone,
+                    _phoneController,
+                    keyboardType: TextInputType.phone,
                   ),
-                  onTap: () {},
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  buildField("Wilayah", Icons.map, _regionController),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _saveProfile,
+                      icon: const Icon(Icons.save),
+                      label: const Text("Simpan"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
-            const Text('Version 2.1.0', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 16),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: Colors.green,
+        selectedItemColor: Colors.green[700],
         unselectedItemColor: Colors.grey,
-        selectedIconTheme: const IconThemeData(size: 36),
-        unselectedIconTheme: const IconThemeData(size: 24),
+        selectedIconTheme: const IconThemeData(size: 32),
         showUnselectedLabels: false,
         showSelectedLabels: true,
         items: const [
@@ -174,46 +196,31 @@ class _SettingPageState extends State<SettingPage> {
     );
   }
 
-  Widget sectionCard({required String title, required List<Widget> children}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(children: children),
-        ),
-      ],
-    );
-  }
-
-  Widget settingTile(IconData icon, String title, {Widget? trailing}) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.grey[700]),
-      title: Text(title),
-      trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 16),
-      onTap: () {},
-    );
-  }
-
-  Widget switchTile({
-    required IconData icon,
-    required String title,
-    required bool value,
-    required Function(bool) onChanged,
+  Widget buildField(
+    String label,
+    IconData icon,
+    TextEditingController controller, {
+    TextInputType keyboardType = TextInputType.text,
   }) {
-    return SwitchListTile(
-      secondary: Icon(icon, color: Colors.grey[700]),
-      title: Text(title),
-      value: value,
-      onChanged: onChanged,
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: (val) => val == null || val.isEmpty ? "Wajib diisi" : null,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 18,
+        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+      ),
     );
   }
 }

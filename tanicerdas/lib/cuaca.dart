@@ -1,7 +1,61 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-class CuacaPage extends StatelessWidget {
+class CuacaPage extends StatefulWidget {
   const CuacaPage({super.key});
+
+  @override
+  State<CuacaPage> createState() => _CuacaPageState();
+}
+
+class _CuacaPageState extends State<CuacaPage> {
+  Map<String, dynamic>? weatherData;
+  List<dynamic> forecastList = [];
+  bool isLoading = true;
+  String errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchWeather();
+  }
+
+  Future<void> fetchWeather() async {
+    const String apiKey =
+        'f9d074ec95f06e27d8417c110d430115'; // Ganti dengan API key OpenWeatherMap kamu
+    const String city = 'Padang';
+
+    final currentUrl = Uri.parse(
+      'https://api.openweathermap.org/data/2.5/weather?q=$city&appid=$apiKey&units=metric&lang=id',
+    );
+    final forecastUrl = Uri.parse(
+      'https://api.openweathermap.org/data/2.5/forecast?q=$city&appid=$apiKey&units=metric&lang=id',
+    );
+
+    try {
+      final currentRes = await http.get(currentUrl);
+      final forecastRes = await http.get(forecastUrl);
+
+      if (currentRes.statusCode == 200 && forecastRes.statusCode == 200) {
+        setState(() {
+          weatherData = jsonDecode(currentRes.body);
+          forecastList = jsonDecode(forecastRes.body)['list'];
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = 'Gagal memuat data cuaca';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Terjadi kesalahan: $e';
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,48 +66,42 @@ class CuacaPage extends StatelessWidget {
         title: const Text('Cuaca', style: TextStyle(color: Colors.white)),
         centerTitle: false,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCuacaSaatIni(),
-            const SizedBox(height: 24),
-            const Text(
-              'Peringatan Aktif',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _buildPeringatanCard(
-              icon: Icons.water_drop,
-              iconColor: Colors.blue,
-              title: "Peringatan Hujan Lebat",
-              wilayah: "Kecamatan Pauh dan sekitarnya",
-              waktu: "7 Mei, 10:00 - 18:00",
-              badgeLabel: "Info",
-              badgeColor: Colors.blue[100]!,
-              badgeTextColor: Colors.blue[900]!,
-              stripColor: Colors.blue,
-            ),
-            const SizedBox(height: 12),
-            _buildPeringatanCard(
-              icon: Icons.warning_amber_rounded,
-              iconColor: Colors.orange,
-              title: "Risiko Banjir",
-              wilayah: "Kecamatan Lubuk Begalung",
-              waktu: "7-8 Mei 2025",
-              badgeLabel: "Siaga",
-              badgeColor: Colors.orange[100]!,
-              badgeTextColor: Colors.orange[900]!,
-              stripColor: Colors.orange,
-            ),
-          ],
-        ),
-      ),
+      body:
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : errorMessage.isNotEmpty
+              ? Center(child: Text(errorMessage))
+              : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildCuacaSaatIni(),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Perkiraan Cuaca',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...forecastList
+                        .take(4)
+                        .map((item) => _buildForecastCard(item))
+                        .toList(),
+                  ],
+                ),
+              ),
     );
   }
 
   Widget _buildCuacaSaatIni() {
+    final name = weatherData?['name'] ?? '-';
+    final temp = weatherData?['main']?['temp']?.toStringAsFixed(0) ?? '--';
+    final description =
+        weatherData?['weather']?[0]?['description'] ?? 'Tidak tersedia';
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Colors.blue, width: 1),
@@ -66,24 +114,31 @@ class CuacaPage extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
+              children: [
+                const Text(
                   "Cuaca Saat Ini",
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(height: 4),
-                Text("Kecamatan Pauh, Padang"),
-                Text("Selasa, 6 Mei 2025"),
+                const SizedBox(height: 4),
+                Text(name),
+                Text(description),
               ],
             ),
           ),
           Column(
-            children: const [
-              Icon(Icons.wb_sunny_rounded, size: 48, color: Colors.orange),
-              SizedBox(height: 4),
+            children: [
+              const Icon(
+                Icons.wb_sunny_rounded,
+                size: 48,
+                color: Colors.orange,
+              ),
+              const SizedBox(height: 4),
               Text(
-                "28°C",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                "$temp°C",
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ],
           ),
@@ -92,86 +147,20 @@ class CuacaPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPeringatanCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String wilayah,
-    required String waktu,
-    required String badgeLabel,
-    required Color badgeColor,
-    required Color badgeTextColor,
-    required Color stripColor,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 6,
-            height: 100,
-            decoration: BoxDecoration(
-              color: stripColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                bottomLeft: Radius.circular(12),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(icon, color: iconColor),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeColor,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          badgeLabel,
-                          style: TextStyle(
-                            color: badgeTextColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(wilayah),
-                  Text(
-                    "Berlaku: $waktu",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+  Widget _buildForecastCard(dynamic item) {
+    final dateTime = item['dt_txt'] ?? '';
+    final temp = item['main']['temp'].toStringAsFixed(0);
+    final desc = item['weather'][0]['description'];
+    final iconCode = item['weather'][0]['icon'];
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: ListTile(
+        leading: Image.network(
+          'https://openweathermap.org/img/wn/$iconCode@2x.png',
+        ),
+        title: Text("$desc - $temp°C"),
+        subtitle: Text(dateTime),
       ),
     );
   }
