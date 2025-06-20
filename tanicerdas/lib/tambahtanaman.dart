@@ -69,6 +69,16 @@ class _TambahTanamanPageState extends State<TambahTanamanPage> {
       'createdAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
+    // Simpan juga ke koleksi alltanaman (global data tanaman per user)
+    final allTanamanRef = FirebaseFirestore.instance.collection('alltamanan');
+
+    await allTanamanRef.add({
+      'uid': uid,
+      'namaTanaman': namaTanaman,
+      'jumlah': double.tryParse(jumlahController.text) ?? 0,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Data tanaman berhasil ditambahkan!')),

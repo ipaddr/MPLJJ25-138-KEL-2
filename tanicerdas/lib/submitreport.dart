@@ -97,6 +97,19 @@ class _SubmitReportPageState extends State<SubmitReportPage> {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
+    // ✅ Tambahkan ke koleksi global allreport
+    await FirebaseFirestore.instance.collection('allreport').add({
+      'uid': uid,
+      'kategori': selectedCategory,
+      'judul': _judulController.text,
+      'tanggal': selectedDate,
+      'lokasi': selectedLahan,
+      'deskripsi': _descController.text,
+      'namaTanaman': _namaTanamanController.text,
+      'jumlahPanen': _jumlahPanenController.text,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,

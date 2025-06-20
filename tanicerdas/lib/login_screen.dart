@@ -7,7 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'home_page.dart';
-import 'admin_login_screen.dart';
+import 'admin_dashboard.dart'; // ganti jika file Anda berbeda
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,18 +23,25 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _loginUser() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
     try {
-      await _auth.signInWithEmailAndPassword(
+      UserCredential credential = await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
+
+      final user = credential.user;
+      if (user != null && user.email == 'admin@tanicerdas.com') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboard()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       String error = '';
       switch (e.code) {
@@ -62,9 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -77,9 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
+      final googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -152,7 +155,6 @@ class _LoginScreenState extends State<LoginScreen> {
               Image.asset('assets/logo_tanicerdas.png', height: 100),
               const SizedBox(height: 24),
 
-              // Email field
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -174,7 +176,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Password field
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -196,7 +197,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Tombol Login
               SizedBox(
                 width: double.infinity,
                 height: 48,
@@ -216,7 +216,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Lupa Password
               Align(
                 alignment: Alignment.centerRight,
                 child: GestureDetector(
@@ -240,33 +239,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Admin Login
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AdminLoginScreen(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.admin_panel_settings),
-                  label: const Text("Login sebagai Admin"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.green[700],
-                    side: BorderSide(color: Colors.green[700]!),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Divider
               Row(
                 children: const [
                   Expanded(child: Divider()),
@@ -279,7 +251,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Social login icons (now active)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -313,7 +284,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Register
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

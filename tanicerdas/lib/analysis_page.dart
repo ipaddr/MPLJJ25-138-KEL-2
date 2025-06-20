@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'home_page.dart';
 import 'schedule_page.dart';
 import 'setting_page.dart';
+import 'chatbot_screen.dart';
 
 class AnalysisPage extends StatefulWidget {
   const AnalysisPage({super.key});
@@ -99,112 +100,148 @@ class _AnalysisPageState extends State<AnalysisPage> {
         elevation: 0,
         backgroundColor: Colors.green[700],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 16),
-            _sectionCard(
-              title: "Produktivitas per Kategori",
-              child: SizedBox(
-                height: 200,
-                child: BarChart(
-                  BarChartData(
-                    barGroups: _buildKategoriBarData(kategoriData),
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            final keys = kategoriData.keys.toList();
-                            if (value.toInt() < keys.length) {
-                              return SideTitleWidget(
-                                axisSide: meta.axisSide,
-                                child: Text(
-                                  keys[value.toInt()],
-                                  style: const TextStyle(fontSize: 10),
-                                ),
-                              );
-                            }
-                            return const SizedBox();
-                          },
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: getMaxKategoriValue() / 4,
-                          getTitlesWidget:
-                              (value, meta) => Text(value.toInt().toString()),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  _sectionCard(
+                    title: "Produktivitas per Kategori",
+                    child: SizedBox(
+                      height: 200,
+                      child: BarChart(
+                        BarChartData(
+                          barGroups: _buildKategoriBarData(kategoriData),
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final keys = kategoriData.keys.toList();
+                                  if (value.toInt() < keys.length) {
+                                    return SideTitleWidget(
+                                      axisSide: meta.axisSide,
+                                      child: Text(
+                                        keys[value.toInt()],
+                                        style: const TextStyle(fontSize: 10),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox();
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: getMaxKategoriValue() / 4,
+                                getTitlesWidget:
+                                    (value, meta) =>
+                                        Text(value.toInt().toString()),
+                              ),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          gridData: FlGridData(show: false),
+                          barTouchData: BarTouchData(enabled: true),
                         ),
                       ),
                     ),
-                    borderData: FlBorderData(show: false),
-                    gridData: FlGridData(show: false),
-                    barTouchData: BarTouchData(enabled: true),
+                  ),
+                  const SizedBox(height: 16),
+                  _sectionCard(
+                    title: "Tren Produktivitas Bulanan",
+                    child: SizedBox(
+                      height: 200,
+                      child: LineChart(
+                        LineChartData(
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: timeSeriesSpots,
+                              isCurved: true,
+                              color: Colors.green,
+                              barWidth: 3,
+                              dotData: FlDotData(show: true),
+                              belowBarData: BarAreaData(show: false),
+                            ),
+                          ],
+                          titlesData: FlTitlesData(
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 1,
+                                reservedSize: 36,
+                                getTitlesWidget: (value, meta) {
+                                  if (value.toInt() < timeLabels.length &&
+                                      value.toInt() % 2 == 0) {
+                                    final label = timeLabels[value.toInt()]
+                                        .replaceAll('-', '/');
+                                    return Transform.rotate(
+                                      angle: -0.4,
+                                      child: Text(
+                                        label,
+                                        style: const TextStyle(fontSize: 10),
+                                      ),
+                                    );
+                                  }
+                                  return const SizedBox();
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: 20,
+                                getTitlesWidget:
+                                    (value, meta) => Text('${value.toInt()}'),
+                              ),
+                            ),
+                          ),
+                          gridData: FlGridData(show: true),
+                          borderData: FlBorderData(show: true),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChatBotScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.chat_bubble_outline),
+                label: const Text("Tanya AI"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            _sectionCard(
-              title: "Tren Produktivitas Bulanan",
-              child: SizedBox(
-                height: 200,
-                child: LineChart(
-                  LineChartData(
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: timeSeriesSpots,
-                        isCurved: true,
-                        color: Colors.green,
-                        barWidth: 3,
-                        dotData: FlDotData(show: true),
-                        belowBarData: BarAreaData(show: false),
-                      ),
-                    ],
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: 1,
-                          reservedSize: 36,
-                          getTitlesWidget: (value, meta) {
-                            if (value.toInt() < timeLabels.length &&
-                                value.toInt() % 2 == 0) {
-                              final label = timeLabels[value.toInt()]
-                                  .replaceAll('-', '/');
-                              return Transform.rotate(
-                                angle: -0.4,
-                                child: Text(
-                                  label,
-                                  style: const TextStyle(fontSize: 10),
-                                ),
-                              );
-                            }
-                            return const SizedBox();
-                          },
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: 20,
-                          getTitlesWidget:
-                              (value, meta) => Text('${value.toInt()}'),
-                        ),
-                      ),
-                    ),
-                    gridData: FlGridData(show: true),
-                    borderData: FlBorderData(show: true),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 1,
         selectedItemColor: Colors.green[700],

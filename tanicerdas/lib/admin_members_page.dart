@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 class AdminMembersPage extends StatefulWidget {
   const AdminMembersPage({super.key});
@@ -8,52 +11,8 @@ class AdminMembersPage extends StatefulWidget {
 }
 
 class _AdminMembersPageState extends State<AdminMembersPage> {
-  final int _selectedIndex = 3; // Index for Anggota tab
+  final int _selectedIndex = 3;
   final TextEditingController _searchController = TextEditingController();
-
-  final List<Map<String, dynamic>> _members = [
-    {
-      'name': 'Indah Iasha',
-      'specialty': 'Organic Vegetables',
-      'distance': '2.5 km away',
-      'image': 'https://randomuser.me/api/portraits/women/44.jpg',
-    },
-    {
-      'name': 'Agil Abrar',
-      'specialty': 'Fruit Cultivation',
-      'distance': '3.8 km away',
-      'image': 'https://randomuser.me/api/portraits/women/68.jpg',
-    },
-    {
-      'name': 'Alya',
-      'specialty': 'Grain Farming',
-      'distance': '5.1 km away',
-      'image': 'https://randomuser.me/api/portraits/men/32.jpg',
-    },
-    {
-      'name': 'Delsi',
-      'specialty': 'Rice Farming',
-      'distance': '4.2 km away',
-      'image': 'https://randomuser.me/api/portraits/women/65.jpg',
-    },
-    {
-      'name': 'Ahmad Dhani',
-      'specialty': 'Hydroponics',
-      'distance': '6.7 km away',
-      'image': 'https://randomuser.me/api/portraits/men/75.jpg',
-    },
-  ];
-
-  List<Map<String, dynamic>> get filteredMembers {
-    final query = _searchController.text.toLowerCase();
-    if (query.isEmpty) {
-      return _members;
-    }
-    return _members.where((member) {
-      return member['name'].toLowerCase().contains(query) ||
-          member['specialty'].toLowerCase().contains(query);
-    }).toList();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +21,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF4CAF50),
         title: const Text(
-          "Laporan Pertanian",
+          "Data Anggota",
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -84,7 +43,6 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Container(
@@ -101,9 +59,7 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
               ),
               child: TextField(
                 controller: _searchController,
-                onChanged: (value) {
-                  setState(() {});
-                },
+                onChanged: (value) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: "Cari Anggota...",
                   prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
@@ -113,54 +69,52 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
               ),
             ),
           ),
-
-          // Members Title with Filter
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                const Text(
-                  "Anggota",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Icon(Icons.filter_list, color: Colors.grey[700]),
-              ],
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              "Anggota",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Members List
           Expanded(
-            child: ListView.builder(
-              itemCount: filteredMembers.length,
-              itemBuilder: (context, index) {
-                final member = filteredMembers[index];
-                return _buildMemberItem(
-                  name: member['name'],
-                  specialty: member['specialty'],
-                  distance: member['distance'],
-                  imageUrl: member['image'],
+            child: StreamBuilder<QuerySnapshot>(
+              stream:
+                  FirebaseFirestore.instance.collection('users').snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData)
+                  return const Center(child: CircularProgressIndicator());
+                final filtered =
+                    snapshot.data!.docs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final name =
+                          (data['name'] ?? '').toString().toLowerCase();
+                      final role =
+                          (data['Role'] ?? '').toString().toLowerCase();
+                      final search = _searchController.text.toLowerCase();
+                      return name.contains(search) || role.contains(search);
+                    }).toList();
+                return ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final data = filtered[index].data() as Map<String, dynamic>;
+                    return _buildMemberItem(
+                      name: data['name'] ?? 'Tanpa Nama',
+                      role: data['Role'] ?? '-',
+                      noHP: data['phone'] ?? '-',
+                      createdAt: data['createdAt']?.toDate(),
+                    );
+                  },
                 );
               },
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Add new member functionality
-        },
-        backgroundColor: const Color(0xFF4CAF50),
-        child: const Icon(Icons.add),
-      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
-          if (index != _selectedIndex) {
-            Navigator.pop(context);
-          }
+          if (index != _selectedIndex) Navigator.pop(context);
         },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.green,
@@ -183,12 +137,15 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
 
   Widget _buildMemberItem({
     required String name,
-    required String specialty,
-    required String distance,
-    required String imageUrl,
+    required String role,
+    required String noHP,
+    DateTime? createdAt,
   }) {
+    String formattedDate =
+        createdAt != null ? DateFormat('dd MMM yyyy').format(createdAt) : '-';
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -200,72 +157,56 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            // Profile Image
-            CircleAvatar(radius: 30, backgroundImage: NetworkImage(imageUrl)),
-            const SizedBox(width: 16),
-
-            // Member Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    specialty,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        distance,
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Action Buttons
-            Row(
+      child: Row(
+        children: [
+          const CircleAvatar(radius: 30, child: Icon(Icons.person)),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildActionButton(
-                  icon: Icons.phone,
-                  color: Colors.green,
-                  onTap: () {
-                    // Call functionality
-                  },
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _buildActionButton(
-                  icon: Icons.message,
-                  color: Colors.blue,
-                  onTap: () {
-                    // Message functionality
-                  },
+                const SizedBox(height: 4),
+                Text(
+                  role,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  noHP,
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Terdaftar: $formattedDate",
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          _buildActionButton(
+            icon: Icons.phone,
+            color: Colors.green,
+            onTap: () async {
+              final tel = Uri.parse('tel:$noHP');
+              if (await canLaunchUrl(tel)) {
+                await launchUrl(tel, mode: LaunchMode.platformDefault);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Tidak dapat membuka aplikasi telepon'),
+                  ),
+                );
+              }
+            },
+          ),
+        ],
       ),
     );
   }
