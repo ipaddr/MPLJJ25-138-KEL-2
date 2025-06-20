@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_phone_direct_caller/flutter_phone_direct_caller.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AdminMembersPage extends StatefulWidget {
   const AdminMembersPage({super.key});
@@ -238,13 +240,18 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
             icon: Icons.phone,
             color: Colors.green,
             onTap: () async {
-              final tel = Uri.parse('tel:$noHP');
-              if (await canLaunchUrl(tel)) {
-                await launchUrl(tel, mode: LaunchMode.platformDefault);
+              // Minta izin telepon
+              var status = await Permission.phone.status;
+              if (!status.isGranted) {
+                status = await Permission.phone.request();
+              }
+
+              if (status.isGranted) {
+                await FlutterPhoneDirectCaller.callNumber(noHP);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Tidak dapat membuka aplikasi telepon'),
+                    content: Text('Izin menelepon tidak diberikan'),
                   ),
                 );
               }
