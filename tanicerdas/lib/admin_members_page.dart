@@ -16,6 +16,50 @@ class _AdminMembersPageState extends State<AdminMembersPage> {
   final int _selectedIndex = 3;
   final TextEditingController _searchController = TextEditingController();
 
+  final List<Map<String, dynamic>> _members = [
+    {
+      'name': 'Indah Iasha',
+      'specialty': 'Organic Vegetables',
+      'distance': '2.5 km away',
+      'image': 'https://randomuser.me/api/portraits/women/44.jpg',
+    },
+    {
+      'name': 'Agil Abrar',
+      'specialty': 'Fruit Cultivation',
+      'distance': '3.8 km away',
+      'image': 'https://randomuser.me/api/portraits/women/68.jpg',
+    },
+    {
+      'name': 'Alya',
+      'specialty': 'Grain Farming',
+      'distance': '5.1 km away',
+      'image': 'https://randomuser.me/api/portraits/men/32.jpg',
+    },
+    {
+      'name': 'Delsi',
+      'specialty': 'Rice Farming',
+      'distance': '4.2 km away',
+      'image': 'https://randomuser.me/api/portraits/women/65.jpg',
+    },
+    {
+      'name': 'Ahmad Dhani',
+      'specialty': 'Hydroponics',
+      'distance': '6.7 km away',
+      'image': 'https://randomuser.me/api/portraits/men/75.jpg',
+    },
+  ];
+
+  List<Map<String, dynamic>> get filteredMembers {
+    final query = _searchController.text.toLowerCase();
+    if (query.isEmpty) {
+      return _members;
+    }
+    return _members.where((member) {
+      return member['name'].toLowerCase().contains(query) ||
+          member['specialty'].toLowerCase().contains(query);
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
