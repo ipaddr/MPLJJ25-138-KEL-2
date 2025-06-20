@@ -34,11 +34,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $apiKey",
-          "HTTP-Referer": "https://yourapp.com", // opsional
-          "X-Title": "TaniCerdas Chatbot", // opsional
+          "HTTP-Referer": "https://yourapp.com",
+          "X-Title": "TaniCerdas Chatbot",
         },
         body: jsonEncode({
-          "model": "openai/gpt-3.5-turbo", // bisa ganti model lain
+          "model": "openai/gpt-3.5-turbo",
           "messages": [
             {"role": "user", "content": text},
           ],
