@@ -16,7 +16,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   // Ganti dengan API Key kamu dari openrouter.ai
   final String apiKey =
-      "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";
+      "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";
 
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
