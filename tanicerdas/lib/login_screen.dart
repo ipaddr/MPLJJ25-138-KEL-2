@@ -258,28 +258,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     icon: const FaIcon(FontAwesomeIcons.google, size: 32),
                     onPressed: _isLoading ? null : _loginWithGoogle,
                   ),
-                  const SizedBox(width: 24),
-                  IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.facebook, size: 32),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Login Facebook belum tersedia"),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 24),
-                  IconButton(
-                    icon: const FaIcon(FontAwesomeIcons.instagram, size: 32),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Login Instagram belum tersedia"),
-                        ),
-                      );
-                    },
-                  ),
+                  ////////////////////////////////
                 ],
               ),
               const SizedBox(height: 24),
